@@ -28,39 +28,38 @@ def _tuple(*args):
 
 
 def tune_run():
-    length = 4200
-    quick_sma_range = range(1, 10, 1)
-    slow_sma_range = range(2, 30, 2)
-
-    # quick_sma_range = range(2, 4)
-    # slow_sma_range = range(5, 8, 2)
+    length = 400
+    y_range = x_range = np.linspace(0.01, 1.5, 10)
 
     prices = price_history.get_prices()[-length:]
-    quick_sma, slow_sma, gains, losses = zip(*[
+    x, y, gains, losses = zip(*[
         _tuple(
-            quick_sma,
-            slow_sma,
-            *simulate_money(prices, quick_ma=decisions.sma_gen(quick_sma), slow_ma=decisions.sma_gen(slow_sma))
+            x,
+            y,
+            *simulate_money(prices, quick_ma=decisions.sma_gen(quick_sma), slow_ma=decisions.sma_gen(slow_sma), open_threshold_ratio=open_percent/100, close_threshold_ratio=close_percent/100)
         )
-        for quick_sma in quick_sma_range
-        for slow_sma in slow_sma_range
+        for x in x_range
+        for y in y_range
+        for open_percent in [x]
+        for close_percent in [y]
+        for quick_sma in [9]
+        for slow_sma in [24]
         if quick_sma < slow_sma
+        if close_percent <= open_percent
     ])
 
     matplotlib.style.use('ggplot')
     fig, (p1) = plt.subplots(1, 1, sharex=True)
 
-    print([quick_sma, slow_sma, gains, losses])
-    print(np.array([quick_sma, slow_sma, gains, losses]))
-    for x, y, z in zip(quick_sma, slow_sma, gains):
-        p1.scatter([x], [y], s=(z * 1000))
-    for x, y, z in zip(quick_sma, slow_sma, losses):
-        p1.scatter([x], [y], s=(z * 1000), c='r', alpha=0.5)
-    for x, y, gain, loss in zip(quick_sma, slow_sma, gains, losses):
+    for x_, y_, z_ in zip(x, y, gains):
+        p1.scatter([x_], [y_], s=(z_ * 1000))
+    for x_, y_, z_ in zip(x, y, losses):
+        p1.scatter([x_], [y_], s=(z_ * 1000), c='r', alpha=0.5)
+    for x_, y_, gain, loss in zip(x, y, gains, losses):
         p1.annotate(
             # '+{}%\n-{}%\n={}%'.format(int(gain * 100), int(loss * 100), int((gain - loss) * 100)),
             '*{}'.format(round(gain * loss, 1)),
-            (x, y),
+            (x_, y_),
             color='w',
             horizontalalignment='center',
             verticalalignment='center',

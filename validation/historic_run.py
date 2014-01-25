@@ -78,11 +78,13 @@ def simulate(prices, **kwargs):
 
 
 def historic_run():
-    length = 1400
+    length = 400
     price = price_history.get_prices()[-length:]
     quick_ma_f = decisions.sma_gen(9)
     slow_ma_f = decisions.sma_gen(24)
-    t, money, position, close_t, close_profit_loss_rate = simulate(price, quick_ma=quick_ma_f, slow_ma=slow_ma_f)
+    open_percent = 0.8
+    close_percent = 0.5
+    t, money, position, close_t, close_profit_loss_rate = simulate(price, quick_ma=quick_ma_f, slow_ma=slow_ma_f, open_threshold_ratio=open_percent/100, close_threshold_ratio=close_percent/100)
 
     quick_ma = moving_average_values(price, quick_ma_f)
     slow_ma = moving_average_values(price, slow_ma_f)
