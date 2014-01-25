@@ -1,4 +1,5 @@
 from itertools import repeat, accumulate
+from math import ceil
 
 import matplotlib
 
@@ -14,6 +15,8 @@ import price_history
 
 
 KEEP = 30
+EXCHANGE_RATE = 0.0015
+DAILY_MARGIN_INTEREST_RATE = 0.003
 np.seterr(all='raise')
 
 
@@ -49,21 +52,33 @@ def gen_open_close_pairs(time, positions):
                 open_t = t
 
 
+def position_close_profit_rate(positions, open_t, close_t, prices):
+    position_direction = positions[open_t]
+    assert position_direction in [1, -1]
+
+    close_price = prices[close_t]
+    open_price = prices[open_t]
+    price_difference = close_price - open_price
+    gross_profit = position_direction * price_difference
+    exchange_commission = EXCHANGE_RATE * (open_price + close_price)
+    open_days = ceil((close_t - open_t) / 24)
+    margin_interest = open_days * DAILY_MARGIN_INTEREST_RATE
+    net_profit = gross_profit - exchange_commission - margin_interest
+    return 1 + (net_profit / open_price)
+
+
 def simulate(prices, **kwargs):
     t = range(0, len(prices))
     position = np.array(list(run(prices, **kwargs)))
     open_close_t = list(gen_open_close_pairs(t, position))
     close_t = [close_t for (open_t, close_t) in open_close_t]
-    close_change = [
-        1 + (position[open_t] * (prices[close_t] - prices[open_t]) / prices[close_t])
-        for (open_t, close_t) in open_close_t
-    ]
-    money = list(accumulate(close_change, func=operator.mul))
-    return t, money, position, close_t, close_change
+    lose_profit_loss_rate = [position_close_profit_rate(position, open_t, close_t, prices) for open_t, close_t in open_close_t]
+    money = list(accumulate(lose_profit_loss_rate, func=operator.mul))
+    return t, money, position, close_t, lose_profit_loss_rate
 
 
 def historic_run():
-    length = 2200
+    length = 1400
     price = price_history.get_prices()[-length:]
     quick_ma_f = decisions.sma_gen(9)
     slow_ma_f = decisions.sma_gen(24)
@@ -86,7 +101,7 @@ def historic_run():
     money_prev = [1] + money[:-1]
     p2.bar(
         close_t,
-        (np.array(close_profit_loss_rate) - 1)* money_prev,
+        (np.array(close_profit_loss_rate) - 1) * money_prev,
         bottom=money_prev,
         width=10,
         color=['r' if pl < 1 else 'g' for pl in close_profit_loss_rate],
