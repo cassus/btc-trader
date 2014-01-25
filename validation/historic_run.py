@@ -25,12 +25,11 @@ def print_tsv(*args):
 
 
 def run(prices, position=Position.WAIT, **kwargs):
-    yield from repeat(position, KEEP)
+    yield from repeat((position, None), KEEP)
 
-    # noinspection PyArgumentList
     for i in range(KEEP, len(prices)):
-        position = decisions.preferred_position(last_closes=(prices[:i]), current_position=position, **kwargs)
-        yield position
+        position, trailing_stop = decisions.preferred_position(last_closes=(prices[:i]), current_position=position, **kwargs)
+        yield position, trailing_stop
 
 
 def moving_average_values(prices, f):
@@ -69,7 +68,8 @@ def position_close_profit_rate(positions, open_t, close_t, prices):
 
 def simulate(prices, **kwargs):
     t = range(0, len(prices))
-    position = np.array(list(run(prices, **kwargs)))
+    positions_and_stop_tails = list(run(prices, **kwargs))
+    position = np.array([position for position, tail_stop in positions_and_stop_tails])
     open_close_t = list(gen_open_close_pairs(t, position))
     close_t = [close_t for (open_t, close_t) in open_close_t]
     lose_profit_loss_rate = [position_close_profit_rate(position, open_t, close_t, prices) for open_t, close_t in open_close_t]

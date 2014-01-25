@@ -65,23 +65,25 @@ def ema_gen(alpha, length=20):
 def preferred_position(last_closes, current_position, quick_ma=sma_gen(5), slow_ma=sma_gen(20), open_threshold_ratio=0.01, close_threshold_ratio=0.008):
     """
     >>> preferred_position(TEST_IN + [650], current_position=Position.WAIT)
-    -1
+    (-1, 142.5)
     >>> preferred_position(TEST_IN + [950], current_position=Position.WAIT)
-    1
+    (1, 142.5)
     >>> preferred_position(TEST_IN + [750], current_position=Position.WAIT)
-    0
+    (0, None)
     >>> preferred_position(TEST_IN + [750], current_position=Position.SHORT)
-    -1
-    >>> list(range(20))[-5:]
-    [15, 16, 17, 18, 19]
+    (-1, 47.5)
     """
     quick = quick_ma(last_closes)
     slow = slow_ma(last_closes)
+    last_close = last_closes[-1]
     diff_ratio = (quick - slow) / quick
-    return (
+    position = (
         Position.SHORT if diff_ratio < -open_threshold_ratio else
         Position.SHORT if diff_ratio < -close_threshold_ratio and current_position == Position.SHORT else
         Position.LONG if diff_ratio > open_threshold_ratio else
         Position.LONG if diff_ratio > close_threshold_ratio and current_position == Position.LONG else
         Position.WAIT
     )
+    trailing_stop = abs(slow - last_close) if position != Position.WAIT else None
+    return position, trailing_stop
+
